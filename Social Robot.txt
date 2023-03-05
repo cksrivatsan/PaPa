@@ -1,0 +1,83 @@
+#include <Servo.h>
+
+Servo myservo;  // anxious moves
+Servo myservo2; //wakeup and sleep
+
+int pos = 0;    // variable to store the servo position
+
+int noise = 0;
+int noiseThreshold = 560;
+boolean shoutDetected = false;
+
+#define SENSOR_PIN A0
+
+#define PROXIMITY_PIN 4
+
+void setup() {
+  myservo.attach(9);  // anxious moves
+  myservo2.attach(8); // wakeup and sleep
+  Serial.begin(115200);
+  pinMode(13, OUTPUT); // LED light
+  pinMode(4, INPUT); // proximity sensor
+}
+
+void loop() {
+  if ( shoutDetector() ) {
+    wakeUp();
+    while (!digitalRead(PROXIMITY_PIN)) { // --> if they didn't pat the robot it continues to move
+      anxiousMovement();
+    }
+    if (digitalRead(PROXIMITY_PIN)) {
+      backToSleep();
+    }
+  }
+}
+
+boolean shoutDetector () {
+  noise = analogRead(SENSOR_PIN);
+  if ( noise >= noiseThreshold) {
+    shoutDetected = true;
+  }
+  else {
+    shoutDetected = false;
+  }
+  if (shoutDetected) {
+    Serial.println (" shout confirmed");
+    digitalWrite(13, HIGH);
+    return true;
+  }
+  else {
+    Serial.println (" NO shout");
+    Serial.println ("  ");
+    digitalWrite(13, LOW);
+    return false;
+  }
+}
+
+
+void anxiousMovement() {
+  for (pos = 0; pos < 15; pos += 15) {
+    // in steps of 1 degree
+    myservo.write(pos);
+    delay(50);
+  }
+  for (pos = 15; pos > 0; pos -= 15) {
+    myservo.write(pos);
+    delay(50);
+  }
+}
+
+void wakeUp() {
+  for (pos = 0; pos <= 45; pos += 1) {
+    myservo2.write(pos);
+    delay(20);
+  }
+}
+
+
+void backToSleep() {
+  for (pos = 45; pos > 0; pos -= 1) {
+    myservo2.write(pos);
+    delay(20);
+  }
+}
