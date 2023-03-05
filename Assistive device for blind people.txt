@@ -1,0 +1,111 @@
+int threshold = 20;
+int exit_threshold = 7;
+int baseline = 0;
+boolean state = LOW;
+int timeDifference = 330;
+boolean success = false;
+
+int base = 867; // value for dim light
+int delta;
+int lightSensorReading;
+boolean toggle = true;
+
+void setup() {
+  // initialize serial communications (for debugging only):
+  Serial.begin(115200);
+  pinMode(13, OUTPUT);
+  baseline = analogRead(A0);
+}
+
+void loop() {
+
+  if(toggle){
+  success = secretKnockDetector(); // in order to turn on LightDetector
+  }
+  if (success) {
+    Serial.println ("Secret knock detected"); // the light detector will start working
+    toggle = false; // to stop checking for the secret knock.
+    lightSensorReading = analogRead(A1);
+    checkLights();
+  }
+}
+
+void checkLights() {
+
+  delta = lightSensorReading - base;
+  Serial.print(lightSensorReading);
+  Serial.print(" ");
+  Serial.println(delta);
+
+  int thisPitch = map(lightSensorReading, 400, 1000, 1500, 120);
+
+  if (abs(delta) > 160) {
+    Serial.print("tone should be playing now");
+    tone(9, thisPitch, 10);
+    delay(10);        // delay in between reads for stability
+  }
+
+  while ( abs(delta) < 160) {
+    delay(1);
+    delta = analogRead(A0) - base;
+  }
+
+}
+
+
+void waitForSoundEnd() {
+  //  Serial.println("waitForSoundEnd Begins");
+  boolean silence = false;
+  int countdown = 10;
+
+  while (!silence) {
+    int sensorValue = analogRead(A0);
+    int delta = abs(baseline - sensorValue);
+    //    Serial.print("delta:");
+    //    Serial.println(delta);
+
+    if (delta < exit_threshold) {
+      countdown --;
+      if (countdown == 0) {
+        silence = true;
+      }
+      delay(10);
+    }
+    //    Serial.print("counter: ");
+    //    Serial.println(countdown);
+  }
+
+  //  Serial.println("waitForSoundEnd Ends ");
+}
+
+
+boolean secretKnockDetector() {
+
+  int sensorValue = analogRead(A0);
+  int delta = abs(baseline - sensorValue);
+  int timeStamp = 0;
+
+  if (delta > threshold) {
+
+    timeStamp = millis();
+
+    state = !state;
+    digitalWrite(13, state); // for light -> to replace with sound
+
+    waitForSoundEnd();
+
+    while (millis() - timeStamp < timeDifference) {
+      int sensorValue = analogRead(A0);
+      int delta = abs(baseline - sensorValue);
+
+      if (delta > threshold) {
+        return true;// we have a second knock
+
+      }
+    }
+
+  }
+
+  return false;
+
+}

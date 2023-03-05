@@ -1,0 +1,175 @@
+#include <Adafruit_NeoPixel.h>
+#include <NonBlockingRtttl.h>
+
+#define BUZZER_PIN 10
+
+#define PIN        6
+
+#define NUMPIXELS 64
+
+#define BRIGHTNESS 25
+
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+#define DELAYVAL 1000
+
+const char * PoliceSiren = "PoliceSiren:d=2,o=5,b=160:g,c6,g,c6,g,c6,g,c6,g,c6,g,c6,g,c6,g,c6,g,c6,g,c6,g,c6,g,c6";
+const char * beep1 = "two short:d=4,o=5,b=100:16e6,16e6";
+const char * beep2 = "two short:d=4,o=5,b=50:16e6,16e6";
+
+
+int score1 = 0;
+int score2 = 0;
+//int score1 = 10;
+//bool equal = true;
+
+uint32_t colorset[3] = {
+  pixels.Color(255, 0, 0),
+  pixels.Color(0, 255, 0),
+  pixels.Color(0, 0, 255),
+};
+
+uint32_t col1;
+uint32_t col2;
+
+int button1 = 3;
+int button2 = 4;
+
+void setup() {
+  pixels.begin();
+  pixels.setBrightness(BRIGHTNESS);
+
+  pinMode(BUZZER_PIN, OUTPUT);
+  rtttl::begin(BUZZER_PIN, PoliceSiren);
+
+  pinMode(button1, INPUT_PULLUP);
+  pinMode(button2, INPUT_PULLUP);
+  Serial.begin(9600);
+
+  while (true) {
+    if (digitalRead(button1) == LOW || digitalRead(button2) == LOW ) {
+      pixels.begin();
+      pixels.setBrightness(BRIGHTNESS);
+      break;
+    }
+  }
+
+  Serial.print("Player1: ");
+  Serial.println("    Player2: ");
+  Serial.print("   ");
+  Serial.print(score1);
+  Serial.print("            ");
+  Serial.println(score2);
+}
+
+void loop() {
+
+  //noTone(BUZZER_PIN);
+
+  randomize();
+  // delay(DELAYVAL);
+  long startButtonCheckTstamp = millis();
+  while (millis() - startButtonCheckTstamp < 1000) {
+    boolean pressed = checkButton();
+    if (pressed) {
+      break;
+    }
+  }
+
+  if ( score1 >= 5 || score2 >= 5) { // declare winner
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        pixels.setPixelColor((i * 8) + j, colorset[1]);
+        pixels.show();
+      }
+    }
+    rtttl::play();
+    while (true) {
+      // rtttl::play();  // play winner music
+      if (!rtttl::isPlaying()) {
+        rtttl::begin(BUZZER_PIN, PoliceSiren);
+      }
+      rtttl::play();
+
+    }
+  }
+
+}
+
+void randomize() {
+  //  Serial.print("Player1: ");
+  //  Serial.print("        Player2: ");
+  //  Serial.println(score1);
+  //  Serial.print(        score2);
+
+  pixels.clear();
+  col1 = colorset[random(0, 3)];
+  col2 = colorset[random(0, 3)];
+
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 4; j++) {
+      pixels.setPixelColor((i * 8) + j, col1);
+      pixels.show();
+    }
+  }
+
+  for (int i = 0; i < 8; i++) {
+    for (int j = 4; j < 8; j++) {
+      pixels.setPixelColor((i * 8) + j, col2);
+      pixels.show();
+    }
+  }
+
+}
+
+boolean checkButton() {
+  if ( col1 == col2 ) {
+    //    Serial.println("Same Color ");
+    if (digitalRead(button1) == LOW) {
+      score1 ++; // declare it on LED + Sound + and go to next set
+      //      Serial.print(" Correct Press!! Score: ");
+
+      tone(BUZZER_PIN, 4500, 100);
+
+      Serial.print("   ");
+      Serial.print(score1);
+      Serial.print("            ");
+      Serial.println(score2);
+      return true;
+    }
+    if (digitalRead(button2) == LOW) {
+      score2 ++; // declare it on LED + Sound + and go to next set
+      //      Serial.print(" Correct Press!! Score: ");
+      tone(BUZZER_PIN, 2100, 100);
+
+      Serial.print("   ");
+      Serial.print(score1);
+      Serial.print("            ");
+      Serial.println(score2);
+      return true;
+    }
+  }
+
+  if ( col1 != col2 ) {
+    //    Serial.println(" Different Color: ");
+    if (digitalRead(button1) == LOW) {
+      score1 --; // declare it on LED + Sound + and go to next set
+      //      Serial.print(" MissClick!! Score: ");
+      Serial.print("   ");
+      Serial.print(score1);
+      Serial.print("            ");
+      Serial.println(score2);
+      return true;
+    }
+    if (digitalRead(button2) == LOW) {
+      score2 --; // declare it on LED + Sound + and go to next set
+      //      Serial.print(" MissClick!! Score: ");
+      Serial.print("   ");
+      Serial.print(score1);
+      Serial.print("            ");
+      Serial.println(score2);
+      return true;
+    }
+  }
+  return false; // button  was not pressed during the function execution
+}
